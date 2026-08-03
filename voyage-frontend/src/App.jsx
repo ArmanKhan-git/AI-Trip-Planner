@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Plane, Building2, MapPin, Utensils, Wallet, Send,
   ChevronDown, ChevronUp, CheckCircle2, TrendingDown,
   ArrowRight, RotateCcw, Star, ArrowUpDown, Check,
-  Calendar, Users
+  Calendar, Users, Server
 } from "lucide-react";
 
 // ---------------------------------------------------------------------
 // Configure API endpoint
 // ---------------------------------------------------------------------
-const API_BASE_URL =import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // ---------------------------------------------------------------------
 // Airport / City Mapping Dataset
@@ -138,6 +138,42 @@ function parseDuration(duration) {
 }
 
 // ---------------------------------------------------------------------
+// Server Waking / Cold Start Screen
+// ---------------------------------------------------------------------
+function WakingServerScreen() {
+  return (
+    <div style={{ minHeight: "80vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 20, padding: "2rem", textAlign: "center" }}>
+      <div style={{ background: C.brassBg, padding: "18px", borderRadius: "50%", border: `1px solid ${C.brassBorder}` }}>
+        <Server size={32} color={C.brass} />
+      </div>
+      <div>
+        <h2 className="voyage-display" style={{ fontSize: 24, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
+          Waking up AI servers...
+        </h2>
+        <p style={{ color: C.inkSoft, fontSize: 14, maxWidth: 380, lineHeight: 1.5 }}>
+          Our backend sleeps when idle to save resources. Please allow 30–50 seconds for the server to spin up.
+        </p>
+      </div>
+
+      {/* Progress Bar Animation */}
+      <div style={{ width: 240, height: 4, background: C.line, borderRadius: 4, overflow: "hidden", position: "relative" }}>
+        <div style={{
+          width: "100%", height: "100%", background: `linear-gradient(90deg, ${C.brass}, ${C.brassLight})`,
+          position: "absolute", left: "-100%", animation: "voyage-loading-bar 2s infinite ease-in-out"
+        }} />
+      </div>
+
+      <style>{`
+        @keyframes voyage-loading-bar {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // Dropdown Form Input Screen
 // ---------------------------------------------------------------------
 function DropdownInput({ onSubmit }) {
@@ -149,7 +185,6 @@ function DropdownInput({ onSubmit }) {
   const [budget, setBudget] = useState(500000);
   const [currency, setCurrency] = useState("INR");
 
-  // Calculate days dynamically
   const days = useMemo(() => {
     if (!departureDate || !returnDate) return 0;
     const dep = new Date(departureDate);
@@ -166,10 +201,8 @@ function DropdownInput({ onSubmit }) {
       return;
     }
 
-    // Format prompt text for backend NLP parsing
     const formattedPrompt = `Plan a ${days} day trip to ${destinationCity} from ${departureCity} for ${travelers} traveler${travelers > 1 ? "s" : ""} with a budget of ${budget} ${currency} from ${departureDate} to ${returnDate}.`;
     
-    // Also send explicit structured payload alongside prompt
     const payload = {
       prompt: formattedPrompt,
       departure_city: departureCity,
@@ -1029,9 +1062,48 @@ function ResultsView({ data, onReset }) {
 // Root app
 // ---------------------------------------------------------------------
 export default function VoyageApp() {
+  const [isServerReady, setIsServerReady] = useState(false);
+  const [isCheckingServer, setIsCheckingServer] = useState(true);
+
   const [mode, setMode] = useState("input"); // input | loading | results | error
   const [data, setData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Function to wake up / ping the Render backend
+  async function checkServerHealth() {
+    setIsCheckingServer(true);
+    let attempts = 0;
+    const maxAttempts = 15; // Retry for ~60 seconds max
+
+    while (attempts < maxAttempts) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per attempt
+
+        const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          setIsServerReady(true);
+          setIsCheckingServer(false);
+          return;
+        }
+      } catch (err) {
+        console.log(`Server waking up... Attempt ${attempts + 1}/${maxAttempts}`);
+      }
+
+      attempts++;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+
+    setIsCheckingServer(false);
+    setIsServerReady(false);
+  }
+
+  // Ping backend on initial load
+  useEffect(() => {
+    checkServerHealth();
+  }, []);
 
   async function handleSubmit(payload) {
     setMode("loading");
@@ -1063,10 +1135,23 @@ export default function VoyageApp() {
   return (
     <div className="voyage-root" style={{ background: C.paper, minHeight: "100vh" }}>
       <FontImport />
-      {mode === "input" && <DropdownInput onSubmit={handleSubmit} />}
-      {mode === "loading" && <LoadingScreen />}
-      {mode === "error" && <ErrorScreen message={errorMsg} onRetry={() => setMode("input")} />}
-      {mode === "results" && data && <ResultsView data={data} onReset={handleReset} />}
+
+      {/* Show Waking Server Screen if backend is cold */}
+      {isCheckingServer ? (
+        <WakingServerScreen />
+      ) : !isServerReady ? (
+        <ErrorScreen 
+          message="Could not connect to AI backend. The server might still be sleeping or offline." 
+          onRetry={checkServerHealth} 
+        />
+      ) : (
+        <>
+          {mode === "input" && <DropdownInput onSubmit={handleSubmit} />}
+          {mode === "loading" && <LoadingScreen />}
+          {mode === "error" && <ErrorScreen message={errorMsg} onRetry={() => setMode("input")} />}
+          {mode === "results" && data && <ResultsView data={data} onReset={handleReset} />}
+        </>
+      )}
     </div>
   );
 }
