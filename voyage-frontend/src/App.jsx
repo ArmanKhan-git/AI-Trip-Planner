@@ -1080,7 +1080,7 @@ export default function VoyageApp() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per attempt
 
-        const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+        const res = await fetch(`${API_BASE_URL}/ping`, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (res.ok) {
