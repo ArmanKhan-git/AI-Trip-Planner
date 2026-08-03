@@ -27,6 +27,6 @@ def root():
         "message": "Voyage AI Backend Running 🚀"
     }
 
-@app.get("/health")
-def health_check():
+@app.get("/ping")
+def ping_check():
     return {"status": "ok", "message": "Backend is awake!"}
