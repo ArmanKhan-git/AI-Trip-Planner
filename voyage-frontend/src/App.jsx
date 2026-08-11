@@ -209,7 +209,7 @@ function DropdownInput({ onSubmit }) {
       destination_city: destinationCity,
       departure_date: departureDate,
       return_date: returnDate,
-      travelers: Number(travelers),
+      travelers: 1,
       budget: Number(budget),
       currency: currency,
       days: days
@@ -283,8 +283,8 @@ function DropdownInput({ onSubmit }) {
           </div>
         </div>
 
-        {/* Dates & Travelers */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+        {/* Dates Section */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>DEPARTURE DATE</label>
             <input
@@ -309,26 +309,6 @@ function DropdownInput({ onSubmit }) {
                 padding: "11px 12px", fontSize: 13.5, color: C.ink, fontWeight: 500, outline: "none"
               }}
             />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>TRAVELERS</label>
-            <div style={{ position: "relative" }}>
-              <select
-                className="voyage-select"
-                value={travelers}
-                onChange={(e) => setTravelers(e.target.value)}
-                style={{
-                  width: "100%", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12,
-                  padding: "12px 36px 12px 14px", fontSize: 14, color: C.ink, fontWeight: 500, cursor: "pointer"
-                }}
-              >
-                {[1, 2, 3, 4, 5, 6].map((num) => (
-                  <option key={num} value={num}>{num} Traveler{num > 1 ? "s" : ""}</option>
-                ))}
-              </select>
-              <ChevronDown size={16} color={C.inkSoft} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-            </div>
           </div>
         </div>
 
@@ -1017,7 +997,7 @@ function ResultsView({ data, onReset }) {
         </div>
         <p style={{ color: C.inkSoft, fontSize: 14 }}>
           {summary.departure_date} <ArrowRight size={12} style={{ display: "inline", verticalAlign: "middle", margin: "0 4px" }} /> {summary.return_date}
-          {"  ·  "}{summary.days} days · {summary.travelers} traveler{summary.travelers !== 1 ? "s" : ""}
+          {"  ·  "}{summary.days} days · 1 traveler
         </p>
       </div>
 
