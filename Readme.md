@@ -150,6 +150,11 @@ Voyage AI uses **LangGraph** to coordinate specialized agents and workflow nodes
 
 ---
 
+## 🤖 Multi-Agent Workflow
+
+Voyage AI uses a multi-agent workflow orchestrated with LangGraph:
+
+```mermaid
 flowchart TD
     START["User Request"] --> EXTRACT["trip_extractor"]
     EXTRACT --> CHECK["completeness_checker"]
@@ -168,9 +173,9 @@ flowchart TD
     RESTAURANT --> ITINERARY
 
     ITINERARY --> END
+```
 
-Each stage is responsible for a specific part of the planning process rather than relying on a single LLM call.
-
+Each specialized agent handles a specific part of the trip-planning process, with the hotel, places, and restaurant agents branching from the main workflow before converging on the itinerary generation stage.
 ---
 
 ## 🧩 Technology Stack
