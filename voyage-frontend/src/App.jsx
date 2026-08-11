@@ -534,17 +534,31 @@ function Field({ label, value }) {
 // ---------------------------------------------------------------------
 // Budget breakdown
 // ---------------------------------------------------------------------
-function BudgetSection({ flightCost, hotelCost, food, transport, misc, currency, totalBudget, travelers }) {
-  const total = flightCost + hotelCost + food * travelers + transport *travelers + misc *travelers;
+// Provide a default fallback (travelers = 1) so multiplying never results in NaN
+function BudgetSection({ flightCost, hotelCost, food = 0, transport = 0, misc = 0, currency, totalBudget, travelers = 1 }) {
+  // Ensure values are numbers before performing arithmetic
+  const numTravelers = Number(travelers) || 1;
+  const safeFood = Number(food) || 0;
+  const safeTransport = Number(transport) || 0;
+  const safeMisc = Number(misc) || 0;
+
+  // Note: Your backend already calculates group totals. 
+  // If you pass per-person numbers from backend, multiply here; 
+  // otherwise, use the backend totals directly:
+  const totalFood = safeFood;
+  const totalTransport = safeTransport;
+  const totalMisc = safeMisc;
+
+  const total = flightCost + hotelCost + totalFood + totalTransport + totalMisc;
   const remaining = totalBudget - total;
   const pct = (v) => (total > 0 ? (v / total) * 100 : 0);
 
   const segments = [
     { key: "flights", label: "Flights", value: flightCost, color: C.navy },
     { key: "hotel", label: "Hotel", value: hotelCost, color: C.brass },
-    { key: "food", label: "Food", value: food * travelers, color: "#6E8B7A" },
-    { key: "transport", label: "Transport", value: transport * travelers, color: "#93A6B8" },
-    { key: "miscellaneous", label: "Misc", value: misc * travelers, color: C.line },
+    { key: "food", label: "Food", value: totalFood, color: "#6E8B7A" },
+    { key: "transport", label: "Transport", value: totalTransport, color: "#93A6B8" },
+    { key: "miscellaneous", label: "Misc", value: totalMisc, color: C.line },
   ];
 
   const affordable = remaining >= 0;
@@ -1018,6 +1032,7 @@ function ResultsView({ data, onReset }) {
           misc={budget.miscellaneous}
           currency={trip_summary.currency}
           totalBudget={summary.total_budget}
+          travelers={summary.travelers}
         />
 
         <OptionPicker
