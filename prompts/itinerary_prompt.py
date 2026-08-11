@@ -61,24 +61,24 @@ RULES & CALCULATIONS
 Note: numeric totals, percentages, and the affordability decision are
 recalculated deterministically in code after you respond — you do not
 need to guarantee they sum perfectly. Focus your numeric effort on
-producing realistic, well-justified individual estimates (nightly hotel
-rate, per-person food cost, etc.), not on manually cross-checking totals.
+producing realistic, well-justified individual estimates, not on
+manually cross-checking totals.
 
 1. CURRENCY CONVERSION:
    1 USD = {currency_symbol}{exchange_rate:.2f}
    Convert live flight prices from USD to {currency_symbol} using ONLY this rate.
    Set `trip_summary.currency` to exactly "{currency_code}".
 
-2. FLIGHT PRICING & SELECTION:
+2. FLIGHT PRICING & SELECTION (PER TRAVELER):
    • Live flight prices in the JSON are PER TRAVELER in USD.
    • Total Flights Expense = (Price Per Traveler in USD × Exchange Rate) × {state.get("travelers", 1)} Travelers.
    • Rank flights by: 1) Direct flights (Stops = 0), 2) Lowest total price, 3) Shortest duration.
    • Choose ONE best flight and populate `selected_flight`. Include all remaining options in `flight_comparison`, each with a genuine, specific pro and con (do not write "None" — if there is truly no downside, state what would make it better, e.g. "Slightly longer layover than ideal").
 
-3. HOTEL ESTIMATION & SELECTION:
+3. HOTEL ESTIMATION & SELECTION (PER ROOM):
    • Choose ONE hotel ONLY from the provided list based on rating, review count, and location.
-   • Estimate realistic nightly rates based on destination, season, and quality.
-   • Total Hotel Cost = Estimated Nightly Rate × {nights} Nights.
+   • Hotel cost is calculated per ROOM (assume 1 shared room for up to 2 travelers).
+   • Total Hotel Cost = Estimated Nightly Room Rate × {nights} Nights.
    • Include 2-4 comparison options in `hotel_comparison`.
 
 4. DAILY ITINERARY RESTAURANT:
@@ -87,13 +87,23 @@ rate, per-person food cost, etc.), not on manually cross-checking totals.
 
 5. RESTAURANT COMPARISON:
    • Populate `restaurant_comparison` with 4-6 dining options spanning the full range from $ to $$$$, independent of the daily itinerary picks.
-   • Calculate realistic `average_cost_per_person` and `estimated_total_cost` (cost per person × {state.get("travelers", 1)}) for each.
+   • Calculate realistic `average_cost_per_person` and `estimated_total_cost` (Cost per person × {state.get("travelers", 1)}) for each.
    • Include specific pros, cons, and note potential savings versus pricier alternatives.
 
-6. DAILY EXPENSES (FOOD, TRANSPORT, MISC):
-   • Estimate realistic daily food costs based on destination and restaurant price levels chosen.
-   • Local Transport: Estimate reasonable subway/public transit costs (~{currency_symbol}800-{currency_symbol}1,500/day per person).
-   • Miscellaneous: Estimate buffer funds for entry tickets, emergencies, and incidentals.
+6. DAILY EXPENSES (MUST SCALE WITH TRAVELERS):
+   All daily estimates below MUST scale dynamically according to traveler count:
+
+   • Food:
+     - Estimate a realistic daily food cost PER TRAVELER (e.g. ~{currency_symbol}3,000 to {currency_symbol}5,000/day per person).
+     - Total Food = (Daily Per-Person Food Cost × {state.get("days", 1)} Days) × {state.get("travelers", 1)} Travelers.
+
+   • Local Transport:
+     - Estimate subway/public transit cost PER TRAVELER (e.g. ~{currency_symbol}800 to {currency_symbol}1,500/day per person).
+     - Total Transport = (Daily Per-Person Transit × {state.get("days", 1)} Days) × {state.get("travelers", 1)} Travelers.
+
+   • Miscellaneous:
+     - Estimate buffer funds for tickets, entry passes, and incidentals PER TRAVELER.
+     - Total Miscellaneous = (Daily Per-Person Buffer × {state.get("days", 1)} Days) × {state.get("travelers", 1)} Travelers.
 
 7. FEASIBILITY AND ITINERARY GENERATION:
    • If your estimated Grand Total appears to exceed the Total Budget:
@@ -118,7 +128,7 @@ Populate every required field in the JSON structure accurately:
 - `trip_summary`: Baseline parameters input by the user, currency set exactly to "{currency_code}".
 - `selected_flight`: Detailed choice and justification.
 - `selected_hotel`: Detailed choice and justification.
-- `budget`: Your best estimate of each category's cost (exact percentages/totals are recalculated afterward).
+- `budget`: Your best estimate of each category's cost (scaled by travelers count for flights, food, transport, and misc).
 - `flight_comparison`: Specific, genuine pros and cons for every other available flight option.
 - `hotel_comparison`: Specific, genuine pros and cons for candidate hotels.
 - `restaurant_comparison`: Comprehensive dining analysis across price ranges ($ to $$$$).
