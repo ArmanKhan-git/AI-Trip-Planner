@@ -70,8 +70,10 @@ manually cross-checking totals.
    Set `trip_summary.currency` to exactly "{currency_code}".
 
 2. FLIGHT PRICING & SELECTION:
-   • Live flight prices provided in the JSON are ALREADY the TOTAL price for ALL {state.get("travelers", 1)} travelers combined.
-   • Do NOT multiply the flight price by traveler count again.
+   • Live flight prices in the JSON are PER TRAVELER in USD.
+   • Total Flights Expense = (Price Per Traveler in USD × Exchange Rate) × {state.get("travelers", 1)} Travelers.
+   • Rank flights by: 1) Direct flights (Stops = 0), 2) Lowest total price, 3) Shortest duration.
+   • Choose ONE best flight and populate `selected_flight`. Include all remaining options in `flight_comparison`, each with a genuine, specific pro and con (do not write "None" — if there is truly no downside, state what would make it better, e.g. "Slightly longer layover than ideal").
 
 3. HOTEL ESTIMATION & SELECTION (PER ROOM):
    • Choose ONE hotel ONLY from the provided list based on rating, review count, and location.
