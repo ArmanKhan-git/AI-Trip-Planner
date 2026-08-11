@@ -15,7 +15,6 @@ def search_flights(
     destination_code: str,
     departure_date: str,
     return_date: str,
-    travelers: int,
 ):
     payload = {
         "data": {
@@ -32,7 +31,7 @@ def search_flights(
                 },
             ],
             "passengers": [
-                {"type": "adult"} for _ in range(travelers)
+                {"type": "adult"}  
             ],
             "cabin_class": "economy",
         }
@@ -51,7 +50,6 @@ def search_flights(
     flights = []
 
     for offer in offers:
-
         outbound = offer["slices"][0]
         inbound = offer["slices"][1]
 
@@ -60,13 +58,10 @@ def search_flights(
 
         flights.append({
             "id": offer["id"],
-
             "airline": offer["owner"]["name"],
             "airline_code": offer["owner"]["iata_code"],
-
-            "price": float(offer["total_amount"]),
+            "price": float(offer["total_amount"]),  
             "currency": offer["total_currency"],
-
             "outbound": {
                 "from": outbound["origin"]["iata_code"],
                 "to": outbound["destination"]["iata_code"],
@@ -75,7 +70,6 @@ def search_flights(
                 "duration": outbound["duration"],
                 "stops": len(outbound["segments"]) - 1,
             },
-
             "return": {
                 "from": inbound["origin"]["iata_code"],
                 "to": inbound["destination"]["iata_code"],
@@ -88,5 +82,4 @@ def search_flights(
 
     flights.sort(key=lambda x: x["price"])
     
-
     return flights[:5]
