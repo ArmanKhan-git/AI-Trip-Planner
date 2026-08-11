@@ -534,17 +534,17 @@ function Field({ label, value }) {
 // ---------------------------------------------------------------------
 // Budget breakdown
 // ---------------------------------------------------------------------
-function BudgetSection({ flightCost, hotelCost, food, transport, misc, currency, totalBudget }) {
-  const total = flightCost + hotelCost + food + transport + misc;
+function BudgetSection({ flightCost, hotelCost, food, transport, misc, currency, totalBudget, travelers }) {
+  const total = flightCost + hotelCost + food * travelers + transport *travelers + misc *travelers;
   const remaining = totalBudget - total;
   const pct = (v) => (total > 0 ? (v / total) * 100 : 0);
 
   const segments = [
     { key: "flights", label: "Flights", value: flightCost, color: C.navy },
     { key: "hotel", label: "Hotel", value: hotelCost, color: C.brass },
-    { key: "food", label: "Food", value: food, color: "#6E8B7A" },
-    { key: "transport", label: "Transport", value: transport, color: "#93A6B8" },
-    { key: "miscellaneous", label: "Misc", value: misc, color: C.line },
+    { key: "food", label: "Food", value: food * travelers, color: "#6E8B7A" },
+    { key: "transport", label: "Transport", value: transport * travelers, color: "#93A6B8" },
+    { key: "miscellaneous", label: "Misc", value: misc * travelers, color: C.line },
   ];
 
   const affordable = remaining >= 0;
