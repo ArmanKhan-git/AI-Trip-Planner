@@ -15,7 +15,6 @@ def flight_agent(state: TripState):
         destination_code=destination_code,
         departure_date=state["departure_date"],
         return_date=state["return_date"],
-        travelers=state["travelers"],
     )
 
     if not flights:
