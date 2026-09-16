@@ -4,7 +4,7 @@
 
 **Live Demo:** https://voyageai-rust.vercel.app/
 
-**GitHub:** https://github.com/ArmanKhan-git/AI-Trip-Planner
+**Backend API:** https://ai-trip-planner-kywc.onrender.com
 
 ---
 
