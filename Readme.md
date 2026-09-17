@@ -5,6 +5,7 @@
 **Live Demo:** https://voyageai-rust.vercel.app/
 
 **Backend API:** https://ai-trip-planner-kywc.onrender.com
+**go to /docs of api to test**
 
 ---
 
