@@ -53,8 +53,10 @@ def search_flights(
         outbound = offer["slices"][0]
         inbound = offer["slices"][1]
 
-        outbound_segment = outbound["segments"][0]
-        return_segment = inbound["segments"][0]
+        outbound_first = outbound["segments"][0]
+        outbound_last = outbound["segments"][-1]
+        return_first = inbound["segments"][0]
+        return_last = inbound["segments"][-1]
 
         flights.append({
             "id": offer["id"],
@@ -65,16 +67,16 @@ def search_flights(
             "outbound": {
                 "from": outbound["origin"]["iata_code"],
                 "to": outbound["destination"]["iata_code"],
-                "departure": outbound_segment["departing_at"],
-                "arrival": outbound_segment["arriving_at"],
+                "departure": outbound_first["departing_at"],
+                "arrival": outbound_last["arriving_at"],
                 "duration": outbound["duration"],
                 "stops": len(outbound["segments"]) - 1,
             },
             "return": {
                 "from": inbound["origin"]["iata_code"],
                 "to": inbound["destination"]["iata_code"],
-                "departure": return_segment["departing_at"],
-                "arrival": return_segment["arriving_at"],
+                "departure": return_first["departing_at"],
+                "arrival": return_last["arriving_at"],
                 "duration": inbound["duration"],
                 "stops": len(inbound["segments"]) - 1,
             },

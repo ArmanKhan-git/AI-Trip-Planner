@@ -1,4 +1,4 @@
-from graph.graph import graph
+from graph.graph import chat_graph as graph
 from langchain_core.messages import HumanMessage
 
 config = {

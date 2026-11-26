@@ -17,6 +17,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Lets the frontend read the PDF filename from /pdf responses.
+    expose_headers=["Content-Disposition"],
 )
 app.include_router(router)
 

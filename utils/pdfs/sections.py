@@ -36,7 +36,7 @@ def build_flight_section(story, itinerary: Itinerary):
 
         ["Price (USD)", f"${flight.price_usd:,.2f}"],
 
-        ["Price (INR)", f"₹{flight.price_inr:,.0f}"],
+        [f"Price ({itinerary.trip_summary.currency})", f"{flight.price:,.0f}"],
 
         ["Duration", flight.duration],
 

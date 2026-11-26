@@ -1,11 +1,13 @@
 # ✈️ Voyage AI — AI-Powered Travel Planner
 
-> An AI-powered travel planning application that turns natural-language travel requests into personalized, budget-aware itineraries using a multi-agent LangGraph workflow, Google Gemini, real-time travel APIs, and a React frontend.
+> An AI-powered travel planner that turns a few trip details into a personalized, budget-aware, day-by-day itinerary — using a multi-agent LangGraph workflow, Google Gemini, live travel APIs, deterministic cost checks and a React frontend.
 
 **Live Demo:** https://voyageai-rust.vercel.app/
 
 **Backend API:** https://ai-trip-planner-kywc.onrender.com
-**go to /docs of api to test**
+**Go to `/docs` on the API to test it (Swagger UI).**
+
+**GitHub:** https://github.com/ArmanKhan-git/AI-Trip-Planner
 
 ---
 
@@ -13,87 +15,88 @@
 
 Voyage AI automates the process of planning a complete trip.
 
-Instead of manually searching for flights, hotels, restaurants, attractions, prices, and travel information, users can provide a request such as:
+Instead of manually searching for flights, hotels, restaurants, attractions, prices and travel information, the user picks:
 
-> "Plan a 7-day trip from Delhi to Tokyo for 2 people with a budget of ₹5,00,000."
+> **Delhi → Tokyo · 28 Nov – 5 Dec 2026 · 1 traveler · ₹5,00,000 budget**
 
-Voyage AI extracts the trip requirements, gathers relevant travel data, compares available options, estimates the total cost, and generates a personalized day-by-day itinerary.
+Voyage AI then fetches live flight offers, hotels, restaurants and attractions, lets an AI agent plan the trip, **re-checks every cost in code**, and returns a complete itinerary that can be customized on screen and downloaded as a PDF.
 
-The application combines **LLMs, multi-agent workflows, external APIs, structured outputs, and budget optimization** into one end-to-end AI application.
+The application combines **LLMs, multi-agent workflows, external APIs, structured outputs, deterministic validation and budget optimization** into one end-to-end AI application.
 
 ---
 
 ## ✨ Features
 
-### 🤖 AI-Powered Trip Planning
-- Understands natural-language travel requests.
-- Extracts destination, departure city, duration, budget, travelers, and travel dates.
-- Handles missing information through conversational follow-up.
-- Generates personalized day-by-day itineraries.
+### 🧭 Trip Planning Form
+- Departure and destination cities (dropdowns limited to supported airports).
+- Departure and return dates — the app shows the exact **days / nights** (e.g. 28 Nov → 5 Dec = 8 days / 7 nights).
+- Number of travelers (1–9), total budget and currency (**INR** or **USD**).
 
-### ✈️ Flight Recommendations
-- Integrates the Duffel Flight API.
-- Retrieves available flight options.
-- Compares airlines, prices, duration, and stops.
-- Selects a suitable flight based on trip requirements.
+### ✈️ Flights
+- Live round-trip offers from the **Duffel Flight API** (5 cheapest options).
+- **Outbound and return legs** shown separately: departure/arrival times, duration and stops.
+- Flight times, prices and legs are filled in **from the real API data**, not written by the AI.
+- Price is shown per traveler; the budget multiplies it by the number of travelers.
 
-### 🏨 Hotel Recommendations
-- Searches hotel options for the destination.
-- Considers hotel ratings and review popularity.
-- Estimates accommodation costs.
-- Provides hotel comparison options.
+### 🏨 Hotels
+- Hotel candidates from **Google Places** (rating and review count).
+- The AI picks one hotel and compares 4 alternatives with pros and cons.
+- The user can switch to any other hotel; the budget updates instantly.
 
-### 🍜 Restaurant Recommendations
-- Uses location-based restaurant data.
-- Recommends restaurants based on itinerary locations.
-- Provides multiple restaurant options.
-- Supports `$`, `$$`, `$$$`, and `$$$$` price categories.
-- Calculates estimated dining costs and potential savings between options.
+### 📅 Day-by-Day Itinerary
+- Every day has its **calendar date** and a morning / afternoon / evening plan.
+- **Flight-time aware:** overnight flights, early-morning arrivals and midnight airport transfers are worked out in code and the plan follows them.
+- **Travel days** (e.g. an overnight outbound flight or a 03:05 return flight) show *"dinner at the airport or on board"* instead of a restaurant.
+- Attractions from Google Places — never repeated across days.
 
-### 📍 Tourist Attractions
-- Finds attractions relevant to the destination.
-- Incorporates attractions into the day-wise itinerary.
-- Organizes activities across morning, afternoon, and evening.
+### 🍜 Dinner Options & Food Budget
+- Each evening offers two dinner choices:
+  - **Recommended** — a reputable, well-reviewed mid-range restaurant ($$–$$$).
+  - **Fine dining** — a high-end ($$$$) alternative; the user can switch per day.
+- **Breakfast + lunch allowance** per day (cafés / convenience stores).
+- **Google price-range check:** each restaurant's price is validated against Google's typical spend per person (e.g. "JPY 1000-2000"). When Google only gives a minimum (e.g. "JPY 10000+"), the price is shown honestly as **"from ₹X"**.
+- Food total = Σ (chosen dinner + breakfast/lunch) × travelers — and it updates live when the user changes a dinner.
 
-### 💰 Budget Optimization
-Voyage AI breaks estimated trip cost into:
+### 🔄 Regenerate Itinerary
+- If the user picks a different hotel or flight, a banner offers to **re-plan the days** for that choice.
+- Only the daily plan is regenerated (~10 s instead of ~30 s) — no new flight or Places API calls.
+- Restaurants keep the same prices as in the first plan.
+
+### 💰 Budget Calculated in Code
+The AI suggests the plan, but every number in the budget is **recalculated deterministically**:
 
 ```text
-Flights
-Hotels
-Food
+Flights        = flight price per traveler × travelers
+Hotel          = nightly rate × nights
+Food           = Σ (dinner + breakfast/lunch) × travelers
 Transportation
 Miscellaneous
 ----------------
 Total Trip Cost
-Remaining Budget
+Remaining Budget   →  Affordable / Over Budget
 ```
 
-It also determines whether the proposed trip is affordable within the user's budget.
+### 📄 PDF Download
+- One click downloads a designed PDF of **exactly what's on screen** — chosen flight and hotel, regenerated days and dinner picks — with the budget recalculated.
+- Styled like the web app: cover page with the route and trip stats, boarding-pass card, budget bar, day timeline, comparisons, tips and data confidence.
+- Named after the trip, e.g. `Delhi_to_Tokyo_8_Days_Plan.pdf`.
 
-### 📊 Comparisons
-Users can compare:
-- Flights
-- Hotels
-- Restaurants
+### 🔍 Data Confidence
+Each category is labelled by where its numbers came from — set in code, not by the AI:
 
-and understand the cost difference between alternatives.
+| Category | Source | Confidence |
+|---|---|---|
+| Flight | Live Duffel offer | High |
+| Hotel | Google Places hotel, AI-estimated nightly rate | Medium |
+| Food | Google price tiers + AI estimate | Medium |
+| Transport / Misc | AI estimate | Medium |
 
 ### 📈 AI Observability
-The LangGraph workflow is instrumented with **LangSmith** to monitor:
-- Agent execution
-- State transitions
-- Latency
-- Token usage
-- LLM calls
-- Workflow performance
-- Cost
+The LangGraph workflow is instrumented with **LangSmith** to monitor agent execution, state transitions, latency, token usage, LLM calls and cost.
 
 ---
 
 ## 🧠 Architecture
-
-Voyage AI uses **LangGraph** to coordinate specialized agents and workflow nodes.
 
 ```text
                          User
@@ -103,8 +106,8 @@ Voyage AI uses **LangGraph** to coordinate specialized agents and workflow nodes
                  │   React + Vite  │
                  │    Frontend     │
                  └────────┬────────┘
-                          │
-                          │ REST API
+                          │  REST API
+                          │  POST /plan · POST /itinerary · POST /pdf
                           ▼
                  ┌─────────────────┐
                  │     FastAPI     │
@@ -117,57 +120,49 @@ Voyage AI uses **LangGraph** to coordinate specialized agents and workflow nodes
                  │    Agentic Workflow    │
                  └───────────┬────────────┘
                              │
-       ┌─────────────────────┼─────────────────────┐
-       │                     │                     │
-       ▼                     ▼                     ▼
- Destination            Flight Agent         Hotel Agent
- Agent
-       │                     │                     │
-       │                     ▼                     ▼
-       │              Duffel Flight API       Hotel Data
-       │
-       ▼
- Restaurant Agent
-       │
-       ▼
- Google Places API
-       │
-       └─────────────────────┐
-                             ▼
-                    Itinerary Generation
-                             │
-                             ▼
-                     Budget Calculation
-                             │
-                             ▼
-                      Pydantic Output
-                             │
-                             ▼
-                        FastAPI JSON
-                             │
-                             ▼
-                         Frontend
+        ┌──────────────┬─────┴────────┬──────────────────┐
+        ▼              ▼              ▼                  ▼
+   Flight Agent   Hotel Agent   Places Agent    Restaurant Agent
+        │              │              │                  │
+        ▼              └──────────────┴──────────────────┘
+   Duffel API                         │
+                               Google Places API
+        │                             │
+        └──────────────┬──────────────┘
+                       ▼
+               Itinerary Agent (Gemini)
+                       │
+                       ▼
+     Deterministic checks in code
+     (flight data, dates, travel days, price ranges,
+      budget, confidence, duplicates)
+                       │
+                       ▼
+               Pydantic Output → JSON → Frontend
+                                         │
+                                         ├── Regenerate days  → POST /itinerary
+                                         └── Download PDF     → POST /pdf
 ```
 
 ---
 
 ## 🤖 Multi-Agent Workflow
 
-Voyage AI uses a multi-agent workflow orchestrated with LangGraph:
-
 ```mermaid
 flowchart TD
-    START["User Request"] --> EXTRACT["trip_extractor"]
-    EXTRACT --> CHECK["completeness_checker"]
+    START["Request"] --> ROUTE{"Form fields<br/>already filled?"}
+    ROUTE -->|"Yes (web app)"| CHECK["completeness_checker"]
+    ROUTE -->|"No (CLI chat)"| EXTRACT["trip_extractor"]
+    EXTRACT --> CHECK
 
     CHECK -->|Incomplete| ASK["ask_user"]
     CHECK -->|Complete| FLIGHT["flight_agent"]
 
     ASK --> END["__end__"]
 
-    FLIGHT --> HOTEL["Hotel Agent"]
-    FLIGHT --> PLACES["Places Agent"]
-    FLIGHT --> RESTAURANT["Restaurant Agent"]
+    FLIGHT --> HOTEL["hotel_agent"]
+    FLIGHT --> PLACES["places_agent"]
+    FLIGHT --> RESTAURANT["restaurant_agent"]
 
     HOTEL --> ITINERARY["itinerary_agent"]
     PLACES --> ITINERARY
@@ -176,24 +171,39 @@ flowchart TD
     ITINERARY --> END
 ```
 
-Each specialized agent handles a specific part of the trip-planning process, with the hotel, places, and restaurant agents branching from the main workflow before converging on the itinerary generation stage.
+- **Web app requests** arrive with every field already filled in, so they skip the LLM extractor (one fewer LLM call).
+- **CLI requests** (`main.py`) are free-text, so they go through `trip_extractor` and can ask follow-up questions.
+- The hotel, places and restaurant agents run **in parallel** before converging on the itinerary agent.
+- **Regenerate** (`/itinerary`) runs a smaller day-planning agent with the restaurant and attraction data already fetched.
+
+### AI vs Code — who does what
+
+| AI (Gemini) | Deterministic code |
+|---|---|
+| Chooses the flight and hotel | Fills flight legs, times, durations and prices from Duffel |
+| Writes the day-by-day plan | Calculates dates, nights/days and travel days from flight times |
+| Picks restaurants and attractions | Validates restaurant prices against Google price ranges |
+| Estimates hotel rates and daily costs | Recalculates flights, hotel, food, total and remaining budget |
+| Writes pros/cons and tips | Removes duplicates, sets confidence levels, builds the PDF |
+
 ---
 
 ## 🧩 Technology Stack
 
 ### AI / LLM
 - Python
-- Google Gemini API
+- Google Gemini API (`gemini-3.5-flash-lite`)
 - LangChain
 - LangGraph
 - Prompt Engineering
+- Structured LLM Outputs (Pydantic)
 - LangSmith
-- Structured LLM Outputs
 
 ### Backend
 - FastAPI
 - Pydantic
 - REST APIs
+- ReportLab (PDF generation)
 
 ### Frontend
 - React
@@ -204,7 +214,7 @@ Each specialized agent handles a specific part of the trip-planning process, wit
 
 ### External APIs
 - Duffel Flight API
-- Google Places API
+- Google Places API (Text Search, incl. price level and price range)
 - Exchange Rate API
 
 ### Deployment
@@ -218,75 +228,77 @@ Each specialized agent handles a specific part of the trip-planning process, wit
 ```text
 AI-Trip-Planner/
 │
-├── api/
-├── graph/
-├── agents/
-├── tools/
-├── schemas/
+├── agents/          # LangGraph nodes: extractor, flight, hotel, places, restaurant,
+│                    # itinerary agent and the regenerate (day plan) agent
+├── api/             # FastAPI app, request models and routes (/plan, /itinerary, /pdf)
+├── graph/           # LangGraph state and graph definition
+├── models/          # Gemini model configuration
+├── prompts/         # Itinerary and day-planning prompts
+├── routers/         # Conditional routing between graph nodes
+├── schemas/         # Pydantic schemas for the itinerary output
+├── tools/           # Duffel flights, Google Places, exchange rates, airport lookup
+├── utils/           # Budget, dates, day clean-up, price checks, PDF export
+│   └── pdfs/        # PDF generator
+├── fonts/           # Fonts used in the PDF (SIL Open Font License)
 │
-├── voyage-frontend/
+├── voyage-frontend/ # React + Vite frontend
 │   ├── src/
 │   ├── public/
 │   └── package.json
 │
+├── main.py          # CLI version (chat in the terminal)
+├── config.py        # Loads API keys from .env
 ├── requirements.txt
-├── .env.example
-└── README.md
+├── FUTURE_SCOPE.md  # Known limitations and roadmap
+└── Readme.md
 ```
-
-> The exact folder structure may vary depending on the current repository version.
 
 ---
 
-## 🔄 Example Request
+## 🔌 API Endpoints
 
-```text
-Plan a 7 day trip from Delhi to Tokyo for 2 travelers
-with a budget of ₹5,00,000.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/ping` | Health check (also wakes the Render instance) |
+| `POST` | `/plan` | Generate a full trip plan |
+| `POST` | `/itinerary` | Regenerate only the day-by-day plan for a chosen flight and hotel |
+| `POST` | `/pdf` | Download the itinerary (with the user's choices) as a PDF |
+
+Example `/plan` request:
+
+```json
+{
+  "departure_city": "Delhi",
+  "destination_city": "Tokyo",
+  "departure_date": "2026-11-28",
+  "return_date": "2026-12-05",
+  "travelers": 1,
+  "budget": 500000,
+  "currency": "INR"
+}
 ```
 
-Voyage AI extracts:
-
-```text
-Destination  → Tokyo
-Departure    → Delhi
-Duration     → 7 Days
-Travelers    → 2
-Budget       → ₹5,00,000
-```
-
-The system then gathers:
-
-```text
-✈️ Flights
-🏨 Hotels
-🍜 Restaurants
-📍 Attractions
-💱 Exchange Rates
-```
-
-and generates a complete day-wise itinerary.
+The response contains the full itinerary (`data`) and the restaurant and attraction lists (`context`) that the frontend sends back to `/itinerary` when the user regenerates.
 
 ---
 
 ## 💰 Cost Optimization
 
-Voyage AI is designed to keep the multi-agent workflow economical for practical use.
+LangSmith is used to monitor LLM calls, token usage, latency and cost per run.
 
-LangSmith is used to monitor:
-- LLM calls
-- Token usage
-- Execution latency
-- Agent-level costs
-- Workflow performance
-
-The current implementation achieves an average inference cost of approximately:
+Measured on an 8-day Delhi → Tokyo trip with `gemini-3.5-flash-lite`:
 
 ```text
-$0.008 per itinerary
+Full trip plan (/plan)          ≈ $0.02   (~17K tokens, ~28 s)
+Regenerate days (/itinerary)    ≈ $0.01   (~11K tokens, ~10 s)
+PDF download (/pdf)             $0        (no LLM call)
 ```
 
-using the configured Gemini Flash-Lite model.
+Cost-saving measures:
+- Web app requests skip the LLM extractor.
+- Regenerating re-plans only the days and re-uses the already-fetched data — no new API calls.
+- Data is sent to the model as compact JSON.
+- Budget totals, dates and PDFs are computed in code, not by the LLM.
 
 ---
 
@@ -323,7 +335,7 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Create a `.env` file:
+Create a `.env` file in the project root:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
@@ -340,9 +352,13 @@ GOOGLE_PLACES_API_KEY=your_google_places_api_key
 EXCHANGE_RATE_API_KEY=your_exchange_rate_api_key
 ```
 
-**Never commit your `.env` file.**
+Create `voyage-frontend/.env` for the frontend:
 
-Make sure it is included in `.gitignore`.
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+**Never commit your `.env` files.** They are already listed in `.gitignore`.
 
 ---
 
@@ -392,11 +408,13 @@ http://localhost:5173
 | `LANGSMITH_API_KEY` | LangSmith authentication |
 | `LANGSMITH_PROJECT` | LangSmith project name |
 | `DUFFEL_API_KEY` | Flight search |
-| `GOOGLE_PLACES_API_KEY` | Places and restaurant search |
+| `GOOGLE_PLACES_API_KEY` | Hotels, attractions and restaurants (incl. price ranges) |
 | `EXCHANGE_RATE_API_KEY` | Currency conversion |
+| `VITE_API_URL` | Frontend → backend URL (in `voyage-frontend/.env`) |
 
 ---
 
+## ☁️ Deployment
 
 ### Frontend
 Deployed on **Vercel**.
@@ -408,7 +426,9 @@ https://voyageai-rust.vercel.app/
 ### Backend
 Deployed as a **FastAPI Web Service on Render**.
 
-The backend provides the `/plan` endpoint and OpenAPI documentation.
+Backend API: https://ai-trip-planner-kywc.onrender.com
+
+The free Render instance sleeps when idle; the frontend pings `/ping` and shows a "waking up the server" screen until it responds.
 
 ---
 
@@ -420,14 +440,10 @@ FastAPI provides interactive API testing through Swagger UI:
 http://localhost:8000/docs
 ```
 
-Example:
-
 ```text
-Swagger UI
+Swagger UI (/docs)
     ↓
-POST /docs
-    ↓
-under plan
+POST /plan  (paste the example request above)
     ↓
 FastAPI
     ↓
@@ -435,27 +451,38 @@ LangGraph
     ↓
 Agents + External APIs
     ↓
-Pydantic Validation
+Deterministic checks + Pydantic validation
     ↓
 JSON Response
 ```
 
 ---
 
+## ⚠️ Known Limitations
+
+- **Flights** use Duffel's **test mode**, which returns sample offers (including the fictional "Duffel Airways") — switching to live mode only requires a live API key.
+- **Hotel rates** are AI estimates; Google Places does not provide room prices or availability.
+- **Fine-dining prices** are only partly grounded, because Google's top price bucket is open-ended (e.g. "JPY 10000+").
+- **Cities** are limited to the airport lookup table used by the dropdowns.
+
+See **[FUTURE_SCOPE.md](FUTURE_SCOPE.md)** for the full list of limitations and how each would be solved.
+
+---
+
 ## 📈 Future Improvements
 
-- 🗺️ Google Maps links for hotels, restaurants, and attractions
-- 📸 Images for locations and restaurants
-- 📍 More accurate locality-based restaurant recommendations
-- 🍽️ Multiple restaurant alternatives for each location
-- 💰 Detailed meal-level food budgeting
-- 📊 Dynamic restaurant cost comparison and savings
-- ✈️ Additional flight providers
-- 🏨 Additional hotel providers
+Planned features include:
+
+- 📸 Photos of hotels, restaurants and attractions
+- 🗺️ Google Maps links and a route map for each day
 - 🌦️ Weather-aware itinerary planning
-- 🧳 Personalized recommendations based on traveler preferences
-- 🔄 Improved agent evaluation and automated testing
-- ⚡ Improved cold-start handling for deployed services
+- 🔗 "Book this" links, and real flight / hotel booking with Duffel live mode
+- 🧳 Traveler preferences (vegetarian / halal food, pace, interests)
+- 💬 Chat to edit the plan ("make day 3 more relaxed")
+- 👤 Accounts, saved trips and shareable links
+- 🌍 Any city and multi-city trips
+
+Each item is described with the API it would use and the effort involved in **[FUTURE_SCOPE.md](FUTURE_SCOPE.md)**.
 
 ---
 
@@ -466,20 +493,18 @@ Traditional travel planning requires users to manually combine information from 
 Voyage AI brings these tasks together into one AI-driven workflow:
 
 ```text
-Natural Language Request
-          ↓
-      AI Reasoning
-          ↓
-    Multi-Agent Workflow
-          ↓
-   Real-Time Travel Data
-          ↓
-      Cost Analysis
-          ↓
- Personalized Itinerary
+Trip details
+      ↓
+Live travel data (flights, hotels, restaurants, attractions)
+      ↓
+Multi-agent AI planning
+      ↓
+Deterministic cost & schedule checks
+      ↓
+Personalized itinerary → customize → regenerate → PDF
 ```
 
-The project demonstrates how **LLMs can be combined with deterministic APIs, agent orchestration, structured outputs, observability, and backend services to build practical AI applications.**
+The project demonstrates how **LLMs can be combined with deterministic APIs, agent orchestration, structured outputs, code-level validation, observability and backend services to build practical AI applications.**
 
 ---
 

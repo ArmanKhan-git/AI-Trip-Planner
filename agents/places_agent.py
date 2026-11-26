@@ -7,7 +7,8 @@ def places_agent(state: TripState):
 
     places = search_places(
         city=state["destination_city"],
-        place_type="tourist attraction"
+        place_type="tourist attraction",
+        limit=12
     )
 
     return {

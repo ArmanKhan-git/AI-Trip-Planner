@@ -67,7 +67,7 @@ def render_itinerary(itinerary: Itinerary):
     flight_table.add_column("Value")
 
     flight_table.add_row("Airline", flight.airline)
-    flight_table.add_row("Price", f"₹{flight.price_inr:,.0f}")
+    flight_table.add_row("Price", f"{trip.currency} {flight.price:,.0f}")
     flight_table.add_row("Stops", str(flight.stops))
     flight_table.add_row("Duration", flight.duration)
 

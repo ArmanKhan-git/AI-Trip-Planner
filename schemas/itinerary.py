@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 
 # ----------------------------
@@ -20,14 +20,27 @@ class TripSummary(BaseModel):
 # Flight
 # ----------------------------
 
-class Flight(BaseModel):
-    airline: str
-    airline_code: str
-    price_usd: float
-    price_inr: float
+class FlightLeg(BaseModel):
+    from_code: str
+    to_code: str
+    departure: str
+    arrival: str
     duration: str
     stops: int
+
+
+class Flight(BaseModel):
+    offer_id: str = Field(description="The `id` of the chosen offer from LIVE FLIGHT OPTIONS, copied exactly.")
+    airline: str
+    airline_code: str
+    price_usd: float = Field(description="Round-trip price per traveler in the offer's original currency.")
+    price: float = Field(description="Round-trip price per traveler in the trip currency.")
+    duration: str = Field(description="Outbound flight duration.")
+    stops: int = Field(description="Outbound stops.")
     reason: str
+    # Filled in by code from live Duffel data; leave null.
+    outbound: Optional[FlightLeg] = None
+    return_leg: Optional[FlightLeg] = None
 
 
 # ----------------------------
@@ -73,12 +86,16 @@ class Budget(BaseModel):
 # ----------------------------
 
 class FlightComparison(BaseModel):
+    offer_id: str = Field(description="The `id` of this offer from LIVE FLIGHT OPTIONS, copied exactly.")
     airline: str
-    price: float
+    price: float = Field(description="Round-trip price per traveler in the trip currency.")
     duration: str
     stops: int
     pros: str
     cons: str
+    # Filled in by code from live Duffel data; leave null.
+    outbound: Optional[FlightLeg] = None
+    return_leg: Optional[FlightLeg] = None
 
 
 # ----------------------------
@@ -110,7 +127,14 @@ class Restaurant(BaseModel):
 
     reason: str
 
-    estimated_saving: float
+    # Computed in code: how much this pick saves vs. the day's other dinner option.
+    estimated_saving: float = 0
+
+    # Set in code: Google's per-person price range used to validate the cost, e.g. "THB 200-400".
+    google_price_range: Optional[str] = None
+
+    # Set in code: the price is Google's minimum for an open-ended range ("JPY 10000+"), shown as "from ₹X".
+    price_is_minimum: bool = False
 
 
 # ----------------------------
@@ -126,9 +150,33 @@ class Day(BaseModel):
 
     evening: str
 
-    restaurant: Restaurant
+    restaurant: Restaurant = Field(
+        description="Recommended DINNER: a well-reviewed, reputable mid-range ($$-$$$) restaurant."
+    )
 
-    nearby_restaurants: List[Restaurant]
+    # Required so the model cannot silently skip it; code sets it to None when it
+    # duplicates `restaurant` (travel days with no evening at the destination).
+    fine_dining: Optional[Restaurant] = Field(
+        ...,
+        description="Fine-dining ($$$$) DINNER alternative for the same evening; same as `restaurant` on pure travel days."
+    )
+
+    # Computed in code from the trip dates, e.g. "2026-11-28".
+    date: Optional[str] = None
+
+    # Computed in code from flight times: no dinner at the destination on this day.
+    travel_day: bool = False
+
+    # Set when exporting: "fine" if the user swapped in the fine-dining option for this day.
+    dinner_choice: Optional[str] = None
+
+    breakfast_lunch_allowance: float = Field(
+        default=0,
+        description="Typical cost PER PERSON for breakfast + lunch at convenience stores, cafes or casual local spots, in the trip currency."
+    )
+
+    # Computed in code: recommended dinner + breakfast/lunch allowance, per person.
+    daily_food_cost_per_person: float = 0
 
     attractions: List[str]
 
@@ -224,3 +272,10 @@ class Itinerary(BaseModel):
 
 
     confidence: Confidence
+
+# ----------------------------
+# Regenerated day plan (after the user picks another flight/hotel)
+# ----------------------------
+
+class DayPlan(BaseModel):
+    itinerary: List[Day]

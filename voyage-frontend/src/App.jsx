@@ -3,7 +3,7 @@ import {
   Plane, Building2, MapPin, Utensils, Wallet, Send,
   ChevronDown, ChevronUp, CheckCircle2, TrendingDown,
   ArrowRight, RotateCcw, Star, ArrowUpDown, Check,
-  Calendar, Users, Server
+  Calendar, Users, Server, RefreshCw, Download
 } from "lucide-react";
 
 // ---------------------------------------------------------------------
@@ -128,13 +128,28 @@ function formatCurrency(value, currency = "INR") {
   return symbol + Math.round(value).toLocaleString("en-IN");
 }
 
+// ISO 8601 durations: "PT8H27M" -> "8 hr 27 min", "P1DT6H15M" -> "30 hr 15 min".
+// Anything else (e.g. an already formatted "8 hr 27 min") is returned unchanged.
 function parseDuration(duration) {
   if (!duration) return "";
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  if (!match) return duration;
-  const hours = match[1];
-  const minutes = match[2];
+  const match = duration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/);
+  if (!match || !(match[1] || match[2] || match[3])) return duration;
+  const hours = Number(match[2] || 0) + Number(match[1] || 0) * 24;
+  const minutes = Number(match[3] || 0);
   return [hours ? `${hours} hr` : "", minutes ? `${minutes} min` : ""].join(" ").trim();
+}
+
+// "2026-11-28T10:05:00" -> "28 Nov, 10:05" (airport-local time, no timezone shifting)
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatLegTime(iso) {
+  if (!iso) return "";
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return iso;
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}, ${m[4]}:${m[5]}`;
+}
+
+function stopsLabel(stops) {
+  return stops === 0 ? "Direct" : `${stops} stop${stops > 1 ? "s" : ""}`;
 }
 
 // ---------------------------------------------------------------------
@@ -185,34 +200,35 @@ function DropdownInput({ onSubmit }) {
   const [budget, setBudget] = useState(500000);
   const [currency, setCurrency] = useState("INR");
 
-  const days = useMemo(() => {
+  // Nov 28 -> Dec 5 is 7 nights and 8 calendar days (arrival and departure days both count).
+  const nights = useMemo(() => {
     if (!departureDate || !returnDate) return 0;
     const dep = new Date(departureDate);
     const ret = new Date(returnDate);
-    const diffTime = ret - dep;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
+    const diffNights = Math.round((ret - dep) / (1000 * 60 * 60 * 24));
+    return diffNights > 0 ? diffNights : 0;
   }, [departureDate, returnDate]);
+  const days = nights > 0 ? nights + 1 : 0;
 
   function handleFormSubmit(e) {
     e.preventDefault();
-    if (days <= 0) {
+    if (nights <= 0) {
       alert("Return date must be after departure date.");
       return;
     }
 
     const formattedPrompt = `Plan a ${days} day trip to ${destinationCity} from ${departureCity} for ${travelers} traveler${travelers > 1 ? "s" : ""} with a budget of ${budget} ${currency} from ${departureDate} to ${returnDate}.`;
-    
+
+    // The backend uses these structured fields directly; `prompt` is only a readable summary.
     const payload = {
       prompt: formattedPrompt,
       departure_city: departureCity,
       destination_city: destinationCity,
       departure_date: departureDate,
       return_date: returnDate,
-      travelers: 1,
+      travelers: Number(travelers),
       budget: Number(budget),
       currency: currency,
-      days: days
     };
 
     onSubmit(payload);
@@ -313,7 +329,7 @@ function DropdownInput({ onSubmit }) {
         </div>
 
         {/* Budget Input & Trip Summary Preview */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 120px", gap: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>TOTAL BUDGET</label>
             <input
@@ -327,6 +343,26 @@ function DropdownInput({ onSubmit }) {
                 padding: "12px 14px", fontSize: 14, color: C.ink, fontWeight: 600, outline: "none"
               }}
             />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>TRAVELERS</label>
+            <div style={{ position: "relative" }}>
+              <select
+                className="voyage-select"
+                value={travelers}
+                onChange={(e) => setTravelers(Number(e.target.value))}
+                style={{
+                  width: "100%", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12,
+                  padding: "12px 30px 12px 12px", fontSize: 14, color: C.ink, fontWeight: 600, cursor: "pointer"
+                }}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} color={C.inkSoft} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+            </div>
           </div>
 
           <div>
@@ -352,7 +388,7 @@ function DropdownInput({ onSubmit }) {
         {/* Calculation Summary Bar */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: C.brassBg, border: `1px solid ${C.brassBorder}`, borderRadius: 12 }}>
           <span style={{ fontSize: 13, color: C.brass, fontWeight: 600 }}>
-            Duration: {days} Days / {Math.max(days - 1, 0)} Nights
+            Duration: {days} Days / {nights} Nights
           </span>
           <span className="voyage-mono" style={{ fontSize: 13, color: C.brass, fontWeight: 600 }}>
             Estimated {formatCurrency(budget / (days || 1), currency)}/day
@@ -415,7 +451,27 @@ function ErrorScreen({ message, onRetry }) {
 // ---------------------------------------------------------------------
 // Boarding pass card
 // ---------------------------------------------------------------------
+function LegRow({ label, leg }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span className="voyage-mono" style={{ fontSize: 9.5, color: C.brassLight, letterSpacing: "0.12em" }}>
+          {label} · {leg.from_code} → {leg.to_code}
+        </span>
+        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.6)" }}>
+          {leg.duration} · {stopsLabel(leg.stops)}
+        </span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="DEPART" value={formatLegTime(leg.departure)} />
+        <Field label="ARRIVE" value={formatLegTime(leg.arrival)} />
+      </div>
+    </div>
+  );
+}
+
 function BoardingPass({ trip, flight, hotel }) {
+  const currency = trip.currency;
   const origin = airportCode(trip.departure_city);
   const dest = airportCode(trip.destination);
 
@@ -449,17 +505,30 @@ function BoardingPass({ trip, flight, hotel }) {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+        <div style={{ marginBottom: 14 }}>
           <Field label="AIRLINE" value={`${flight.airline}`} />
-          <Field label="STOPS" value={flight.stops === 0 ? "Direct" : `${flight.stops} stop`} />
-          <Field label="DURATION" value={flight.duration} />
-          <Field label="DEPART" value={trip.departure_date} />
-          <Field label="RETURN" value={trip.return_date} />
         </div>
+
+        {flight.outbound || flight.returnLeg ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {flight.outbound && <LegRow label="OUTBOUND" leg={flight.outbound} />}
+            {flight.returnLeg && <LegRow label="RETURN" leg={flight.returnLeg} />}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <Field label="STOPS" value={stopsLabel(flight.stops)} />
+            <Field label="DURATION" value={flight.duration} />
+            <Field label="DEPART" value={trip.departure_date} />
+            <Field label="RETURN" value={trip.return_date} />
+          </div>
+        )}
 
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
           <div className="voyage-mono" style={{ fontSize: 22, fontWeight: 600, color: C.brassLight }}>
-            ₹{Math.round(flight.price_inr).toLocaleString("en-IN")}
+            {formatCurrency(flight.price, currency)}
+            <span style={{ fontSize: 11.5, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 8 }}>
+              round trip / traveler
+            </span>
           </div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 6, lineHeight: 1.5 }}>{flight.note}</div>
         </div>
@@ -492,8 +561,8 @@ function BoardingPass({ trip, flight, hotel }) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-          <Field label="PER NIGHT" value={hotel.nightly ? `₹${Math.round(hotel.nightly).toLocaleString("en-IN")}` : "—"} />
-          <Field label="TOTAL" value={`₹${Math.round(hotel.cost).toLocaleString("en-IN")}`} />
+          <Field label="PER NIGHT" value={hotel.nightly ? formatCurrency(hotel.nightly, currency) : "—"} />
+          <Field label="TOTAL" value={formatCurrency(hotel.cost, currency)} />
         </div>
 
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{hotel.note}</div>
@@ -709,29 +778,77 @@ function OptionPicker({ icon, title, options, selectedId, onSelect, currency, re
   );
 }
 
-function DayRestaurantPicker({ day, currency }) {
-  const options = useMemo(() => {
-    const map = new Map();
-    map.set(day.restaurant.name, { ...day.restaurant, isPrimary: true });
-    (day.nearby_restaurants || []).forEach((r) => {
-      if (!map.has(r.name)) map.set(r.name, { ...r, isPrimary: false });
-    });
-    return Array.from(map.values());
-  }, [day]);
+// Dinner cost (per person) of the option the user picked for a day.
+function selectedDinner(day, choice) {
+  return choice === "fine" && day.fine_dining ? day.fine_dining : day.restaurant;
+}
 
-  const [selectedName, setSelectedName] = useState(day.restaurant.name);
-  const current = options.find((o) => o.name === selectedName) || options[0];
-  const saving = current.estimated_saving ?? 0;
+function DayDinnerPicker({ day, currency, choice, onChoose }) {
+  const allowance = Number(day.breakfast_lunch_allowance) || 0;
+
+  // Flight times mean no dinner at the destination today (overnight flight / early departure).
+  if (day.travel_day) {
+    return (
+      <div style={{ marginTop: 10, padding: "12px 14px", background: C.paper, borderRadius: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.inkSoft }}>
+          <Plane size={14} color={C.brass} />
+          <span><b style={{ color: C.ink }}>Travel day</b> — dinner at the airport or on board</span>
+        </div>
+        {allowance > 0 && (
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px dashed ${C.line}`, display: "flex", justifyContent: "space-between", fontSize: 12, color: C.inkSoft }}>
+            <span>Meals while travelling (est.)</span>
+            <span className="voyage-mono" style={{ color: C.ink, fontWeight: 600 }}>{formatCurrency(allowance, currency)} / person</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const isFine = choice === "fine" && !!day.fine_dining;
+  const current = selectedDinner(day, choice);
+  const dayTotal = (Number(current.average_cost_per_person) || 0) + allowance;
+  const saving = isFine ? 0 : current.estimated_saving ?? 0;
+
+  const tabs = day.fine_dining
+    ? [
+        { key: "recommended", label: "Recommended", r: day.restaurant },
+        { key: "fine", label: "Fine dining", r: day.fine_dining },
+      ]
+    : [];
 
   return (
     <div style={{ marginTop: 10, padding: "12px 14px", background: C.paper, borderRadius: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <span className="voyage-mono" style={{ fontSize: 10.5, color: C.inkSoft, letterSpacing: "0.08em" }}>DINNER</span>
+        {tabs.length > 0 && (
+          <div style={{ display: "flex", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 999, padding: 2 }}>
+            {tabs.map((t) => {
+              const active = (t.key === "fine") === isFine;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => onChoose(t.key)}
+                  style={{
+                    border: "none", cursor: "pointer", borderRadius: 999, padding: "4px 10px", fontSize: 11.5, fontWeight: 600,
+                    background: active ? C.navy : "transparent", color: active ? "#fff" : C.inkSoft,
+                  }}
+                >
+                  {t.label} · {t.r.price_is_minimum ? "from " : ""}{formatCurrency(t.r.average_cost_per_person, currency)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <Utensils size={14} color={C.brass} style={{ marginTop: 2, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{current.name}</span>
             <span style={{ fontSize: 12, color: C.inkSoft }}>· {current.cuisine} · {current.price_range}</span>
-            {current.isPrimary && (
+            {!isFine && (
               <span className="voyage-mono" style={{ fontSize: 9, color: "#fff", background: C.navy, padding: "1.5px 6px", borderRadius: 999, fontWeight: 700 }}>AI PICK</span>
             )}
           </div>
@@ -746,45 +863,46 @@ function DayRestaurantPicker({ day, currency }) {
                 <MapPin size={11} /> {current.distance_km} km away
               </span>
             )}
+            {current.google_price_range && (
+              <span title="Price checked against Google's typical spend per person" style={{ fontSize: 11, color: C.green }}>
+                ✓ Google range {current.google_price_range}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>{current.reason}</div>
         </div>
 
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div className="voyage-mono" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+            {current.price_is_minimum && <span style={{ fontSize: 10.5, fontWeight: 500, color: C.inkSoft }}>from </span>}
             {formatCurrency(current.average_cost_per_person, currency)}
           </div>
           <div style={{ fontSize: 10.5, color: C.inkSoft }}>per person</div>
-          {saving !== 0 && (
-            <div className="voyage-mono" style={{ fontSize: 10.5, marginTop: 3, color: saving > 0 ? C.green : C.red }}>
-              {saving > 0 ? `saves ${formatCurrency(saving, currency)}` : `+${formatCurrency(Math.abs(saving), currency)}`}
+          {saving > 0 && (
+            <div className="voyage-mono" style={{ fontSize: 10.5, marginTop: 3, color: C.green }}>
+              saves {formatCurrency(saving, currency)} vs fine dining
             </div>
           )}
         </div>
       </div>
 
-      {options.length > 1 && (
-        <div style={{ marginTop: 10, position: "relative" }}>
-          <select
-            className="voyage-select"
-            value={current.name}
-            onChange={(e) => setSelectedName(e.target.value)}
-            style={{ width: "100%", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 30px 8px 10px", fontSize: 12, color: C.inkSoft, cursor: "pointer" }}
-          >
-            {options.map((o) => (
-              <option key={o.name} value={o.name}>
-                {o.name}{o.isPrimary ? " (AI pick)" : ""} — {formatCurrency(o.average_cost_per_person, currency)}/person · {o.distance_km} km · ⭐ {o.rating}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={13} color={C.inkSoft} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+      {allowance > 0 && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px dashed ${C.line}`, display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: C.inkSoft }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Breakfast + lunch (cafés / stores, est.)</span>
+            <span className="voyage-mono">{formatCurrency(allowance, currency)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", color: C.ink, fontWeight: 600 }}>
+            <span>Day food total</span>
+            <span className="voyage-mono">{formatCurrency(dayTotal, currency)} / person</span>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function DayTimeline({ days, currency }) {
+function DayTimeline({ days, currency, dinnerChoices, onChooseDinner }) {
   return (
     <SectionCard icon={<MapPin size={16} color={C.brass} />} title="Day-by-day itinerary">
       <div style={{ position: "relative", paddingLeft: 6 }}>
@@ -795,11 +913,21 @@ function DayTimeline({ days, currency }) {
               <span className="voyage-mono" style={{ color: C.brassLight, fontSize: 12, fontWeight: 600 }}>{day.day}</span>
             </div>
             <div style={{ flex: 1, paddingTop: 4 }}>
+              {day.date && (
+                <div className="voyage-mono" style={{ fontSize: 11, color: C.brass, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 6 }}>
+                  {formatLegTime(`${day.date}T00:00`).split(",")[0].toUpperCase()}
+                </div>
+              )}
               <DayRow label="Morning" text={day.morning} />
               <DayRow label="Afternoon" text={day.afternoon} />
               <DayRow label="Evening" text={day.evening} />
 
-              <DayRestaurantPicker day={day} currency={currency} />
+              <DayDinnerPicker
+                day={day}
+                currency={currency}
+                choice={dinnerChoices[day.day] || "recommended"}
+                onChoose={(c) => onChooseDinner(day.day, c)}
+              />
 
               {day.attractions?.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -900,7 +1028,7 @@ function SectionCard({ icon, title, children }) {
 // ---------------------------------------------------------------------
 // Results view
 // ---------------------------------------------------------------------
-function ResultsView({ data, onReset }) {
+function ResultsView({ data, request, context, onReset }) {
   const { summary, trip_summary, selected_flight, selected_hotel, budget,
     flight_comparison, hotel_comparison, itinerary,
     money_saving_tips, travel_tips, confidence } = data;
@@ -910,9 +1038,13 @@ function ResultsView({ data, onReset }) {
       id: "flight-recommended",
       label: `${selected_flight.airline}${selected_flight.airline_code ? ` (${selected_flight.airline_code})` : ""}`,
       airline: selected_flight.airline,
-      price: selected_flight.price_inr,
+      offerId: selected_flight.offer_id,
+      // `price_inr` fallback keeps this working against an older backend during rollout.
+      price: selected_flight.price ?? selected_flight.price_inr,
       duration: parseDuration(selected_flight.duration) || selected_flight.duration,
       stops: selected_flight.stops,
+      outbound: selected_flight.outbound,
+      returnLeg: selected_flight.return_leg,
       pros: selected_flight.reason,
       cons: "",
       note: selected_flight.reason,
@@ -922,9 +1054,12 @@ function ResultsView({ data, onReset }) {
       id: `flight-${i}`,
       label: f.airline,
       airline: f.airline,
+      offerId: f.offer_id,
       price: f.price,
       duration: parseDuration(f.duration) || f.duration,
       stops: f.stops,
+      outbound: f.outbound,
+      returnLeg: f.return_leg,
       pros: f.pros,
       cons: f.cons,
       note: f.pros,
@@ -969,9 +1104,130 @@ function ResultsView({ data, onReset }) {
   const currentFlight = flightOptions.find((f) => f.id === selectedFlightId) || flightOptions[0];
   const currentHotel = hotelOptions.find((h) => h.id === selectedHotelId) || hotelOptions[0];
 
-  const isCustomized = selectedFlightId !== "flight-recommended" || selectedHotelId !== "hotel-recommended";
+  // Per-day dinner choice: { [dayNumber]: "recommended" | "fine" }
+  const [dinnerChoices, setDinnerChoices] = useState({});
+  const chooseDinner = (dayNumber, choice) =>
+    setDinnerChoices((prev) => ({ ...prev, [dayNumber]: choice }));
+  const hasFineDiningPicks = Object.values(dinnerChoices).some((c) => c === "fine");
 
-  const boardingFlight = { ...currentFlight, price_inr: currentFlight.price };
+  const isCustomized =
+    selectedFlightId !== "flight-recommended" || selectedHotelId !== "hotel-recommended" || hasFineDiningPicks;
+
+  const travelers = Number(summary.travelers) || 1;
+
+  // The day plan can be regenerated for a different flight/hotel, so it lives in state.
+  const [days, setDays] = useState(itinerary || []);
+  const [plannedFor, setPlannedFor] = useState({ flightId: "flight-recommended", hotelId: "hotel-recommended" });
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState("");
+
+  const plannedFlight = flightOptions.find((f) => f.id === plannedFor.flightId) || flightOptions[0];
+  const plannedHotel = hotelOptions.find((h) => h.id === plannedFor.hotelId) || hotelOptions[0];
+  const itineraryOutdated =
+    !!request && !!context && (selectedFlightId !== plannedFor.flightId || selectedHotelId !== plannedFor.hotelId);
+
+  // Restaurant -> per-person price already shown to the user, so regenerated days reuse it.
+  function knownRestaurantPrices() {
+    const prices = {};
+    (data.restaurant_comparison || []).forEach((r) => { prices[r.name] = r.average_cost_per_person; });
+    days.forEach((d) => {
+      [d.restaurant, d.fine_dining].forEach((r) => { if (r) prices[r.name] = r.average_cost_per_person; });
+    });
+    return prices;
+  }
+
+  async function regenerateItinerary() {
+    setRegenerating(true);
+    setRegenError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/itinerary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...request,
+          flight: { airline: currentFlight.airline, outbound: currentFlight.outbound, return_leg: currentFlight.returnLeg },
+          hotel: { name: currentHotel.name, rating: currentHotel.rating },
+          restaurants: context.restaurants,
+          places: context.places,
+          known_prices: knownRestaurantPrices(),
+        }),
+      });
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+      const json = await res.json();
+      if (!json.success) throw new Error("Itinerary regeneration failed");
+      setDays(json.data.itinerary);
+      setDinnerChoices({});
+      setPlannedFor({ flightId: selectedFlightId, hotelId: selectedHotelId });
+      return json.data.itinerary;
+    } catch (err) {
+      console.error(err);
+      setRegenError(err.message);
+      return null;
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  const [downloading, setDownloading] = useState(false);
+
+  // The PDF mirrors the screen: chosen flight/hotel, current days and fine-dining picks.
+  async function downloadPdf() {
+    setDownloading(true);
+    try {
+      // If the user switched hotel/flight without regenerating, re-plan the days first
+      // so the PDF never describes the old hotel or flight times.
+      let pdfDays = days;
+      let fineDays = Object.entries(dinnerChoices)
+        .filter(([, choice]) => choice === "fine")
+        .map(([day]) => Number(day));
+      if (itineraryOutdated) {
+        const fresh = await regenerateItinerary();
+        if (!fresh) throw new Error("couldn't update the day plan for your new hotel/flight");
+        pdfDays = fresh;
+        fineDays = [];
+      }
+
+      const res = await fetch(`${API_BASE_URL}/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itinerary: { ...data, itinerary: pdfDays },
+          flight_offer_id: currentFlight.offerId,
+          hotel_name: currentHotel.name,
+          fine_dining_days: fineDays,
+        }),
+      });
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+      const blob = await res.blob();
+      const match = (res.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = match ? match[1] : "Voyage_AI_Itinerary.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(`Couldn't create the PDF: ${err.message}`);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  // Food = sum over days of (chosen dinner + breakfast/lunch allowance) x travelers.
+  // Older backends without per-day allowances fall back to the backend's food estimate.
+  const food = useMemo(() => {
+    const hasDailyCosts = days.some((d) => d.breakfast_lunch_allowance != null);
+    if (!hasDailyCosts) return budget.food;
+    const perPerson = days.reduce((sum, d) => {
+      const dinner = d.travel_day ? 0 : Number(selectedDinner(d, dinnerChoices[d.day]).average_cost_per_person) || 0;
+      return sum + dinner + (Number(d.breakfast_lunch_allowance) || 0);
+    }, 0);
+    return perPerson * travelers;
+  }, [days, dinnerChoices, travelers, budget.food]);
+  const boardingFlight = currentFlight;
   const boardingHotel = { ...currentHotel, cost: currentHotel.price };
 
   return (
@@ -981,9 +1237,19 @@ function ResultsView({ data, onReset }) {
           <Plane size={16} color={C.brass} style={{ transform: "rotate(-45deg)" }} />
           <span className="voyage-mono" style={{ fontSize: 12, letterSpacing: "0.15em", color: C.brass, fontWeight: 600 }}>VOYAGE AI</span>
         </div>
-        <button onClick={onReset} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, color: C.inkSoft, cursor: "pointer" }}>
-          <RotateCcw size={12} /> Plan another trip
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={downloadPdf}
+            disabled={downloading}
+            title={itineraryOutdated ? "Your day plan will be updated for the new hotel/flight before downloading" : "Download this itinerary as a PDF"}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: C.navy, border: "none", borderRadius: 999, padding: "8px 15px", fontSize: 12.5, fontWeight: 600, color: "#fff", cursor: downloading ? "wait" : "pointer", opacity: downloading ? 0.7 : 1 }}
+          >
+            <Download size={12} /> {downloading ? (regenerating ? "Updating days…" : "Preparing PDF…") : "Download PDF"}
+          </button>
+          <button onClick={onReset} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 14px", fontSize: 12.5, color: C.inkSoft, cursor: "pointer" }}>
+            <RotateCcw size={12} /> Plan another trip
+          </button>
+        </div>
       </div>
 
       <div style={{ marginBottom: 24 }}>
@@ -997,7 +1263,7 @@ function ResultsView({ data, onReset }) {
         </div>
         <p style={{ color: C.inkSoft, fontSize: 14 }}>
           {summary.departure_date} <ArrowRight size={12} style={{ display: "inline", verticalAlign: "middle", margin: "0 4px" }} /> {summary.return_date}
-          {"  ·  "}{summary.days} days · 1 traveler
+          {"  ·  "}{summary.days} days · {travelers} traveler{travelers > 1 ? "s" : ""}
         </p>
       </div>
 
@@ -1005,9 +1271,9 @@ function ResultsView({ data, onReset }) {
         <BoardingPass trip={trip_summary} flight={boardingFlight} hotel={boardingHotel} />
 
         <BudgetSection
-          flightCost={currentFlight.price}
+          flightCost={currentFlight.price * travelers}
           hotelCost={currentHotel.price}
-          food={budget.food}
+          food={food}
           transport={budget.transport}
           misc={budget.miscellaneous}
           currency={trip_summary.currency}
@@ -1022,7 +1288,11 @@ function ResultsView({ data, onReset }) {
           selectedId={selectedFlightId}
           onSelect={setSelectedFlightId}
           currency={trip_summary.currency}
-          renderMeta={(o) => `${o.duration} · ${o.stops === 0 ? "Direct" : `${o.stops} stop${o.stops > 1 ? "s" : ""}`}`}
+          renderMeta={(o) =>
+            o.outbound && o.returnLeg
+              ? `Out ${o.outbound.duration} · ${stopsLabel(o.outbound.stops)}  |  Return ${o.returnLeg.duration} · ${stopsLabel(o.returnLeg.stops)}`
+              : `${o.duration} · ${stopsLabel(o.stops)}`
+          }
           renderPros
         />
 
@@ -1041,7 +1311,32 @@ function ResultsView({ data, onReset }) {
           renderPros
         />
 
-        <DayTimeline days={itinerary} currency={trip_summary.currency} />
+        {itineraryOutdated && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", padding: "14px 18px", background: C.brassBg, border: `1px solid ${C.brassBorder}`, borderRadius: 14 }}>
+            <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, flex: "1 1 320px" }}>
+              Your day-by-day plan was made for <b>{plannedHotel.name}</b> and the <b>{plannedFlight.airline}</b> flight.
+              Regenerate it for <b>{currentHotel.name}</b> and <b>{currentFlight.airline}</b>?
+              {regenError && <div style={{ color: C.red, fontSize: 12, marginTop: 4 }}>Couldn't regenerate: {regenError}</div>}
+            </div>
+            <button
+              type="button"
+              onClick={regenerateItinerary}
+              disabled={regenerating}
+              style={{ display: "flex", alignItems: "center", gap: 7, background: C.navy, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: regenerating ? "wait" : "pointer", opacity: regenerating ? 0.7 : 1 }}
+            >
+              <RefreshCw size={14} style={regenerating ? { animation: "voyage-spin 1s linear infinite" } : undefined} />
+              {regenerating ? "Re-planning your days…" : "Regenerate itinerary"}
+            </button>
+            <style>{`@keyframes voyage-spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+
+        <DayTimeline
+          days={days}
+          currency={trip_summary.currency}
+          dinnerChoices={dinnerChoices}
+          onChooseDinner={chooseDinner}
+        />
 
         <TipsSection savingTips={money_saving_tips} travelTips={travel_tips} currency={trip_summary.currency} />
 
@@ -1063,6 +1358,9 @@ export default function VoyageApp() {
   const [mode, setMode] = useState("input"); // input | loading | results | error
   const [data, setData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  // Kept so the results page can ask the backend to re-plan the days (/itinerary).
+  const [planRequest, setPlanRequest] = useState(null);
+  const [planContext, setPlanContext] = useState(null);
 
   // Function to wake up / ping the Render backend
   async function checkServerHealth() {
@@ -1114,6 +1412,8 @@ export default function VoyageApp() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message || "Trip generation failed");
       setData(json.data);
+      setPlanRequest(payload);
+      setPlanContext(json.context || null);
       setMode("results");
     } catch (err) {
       console.error(err);
@@ -1144,7 +1444,9 @@ export default function VoyageApp() {
           {mode === "input" && <DropdownInput onSubmit={handleSubmit} />}
           {mode === "loading" && <LoadingScreen />}
           {mode === "error" && <ErrorScreen message={errorMsg} onRetry={() => setMode("input")} />}
-          {mode === "results" && data && <ResultsView data={data} onReset={handleReset} />}
+          {mode === "results" && data && (
+            <ResultsView data={data} request={planRequest} context={planContext} onReset={handleReset} />
+          )}
         </>
       )}
     </div>
