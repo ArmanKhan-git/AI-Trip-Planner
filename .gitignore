@@ -92,3 +92,5 @@ frontend/dist/
 
 *.sqlite3
 *.db
+# Local notebooks
+test.ipynb
