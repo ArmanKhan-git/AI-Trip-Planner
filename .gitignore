@@ -60,8 +60,9 @@ htmlcov/
 # ==========================================
 
 *.pdf
-.docx
-
+*.docx
+*.png
+*.pptx
 # Keep README if any pdf docs are added later
 !README.pdf
 
@@ -95,3 +96,6 @@ frontend/dist/
 *.db
 # Local notebooks
 test.ipynb
+
+*.jpeg
+/FUTURE_SCOPE.md

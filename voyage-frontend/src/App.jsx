@@ -115,6 +115,30 @@ function FontImport() {
       .voyage-mono { font-family: 'IBM Plex Mono', monospace; }
       .voyage-option-row:hover { border-color: ${C.brass} !important; }
       .voyage-select { -webkit-appearance: none; appearance: none; }
+
+      /* ---- phones ---- */
+      @media (max-width: 600px) {
+        .vy-page { padding: 0 14px 3rem !important; }
+        .vy-topbar { flex-wrap: wrap; gap: 12px; padding: 18px 0 !important; }
+        .vy-topbar-actions { width: 100%; }
+        .vy-topbar-actions > button { flex: 1; justify-content: center; }
+        .vy-card { padding: 18px 16px !important; }
+        .vy-form-card { padding: 22px 18px !important; }
+        .vy-budget-row { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+        .vy-budget-row > :first-child { grid-column: 1 / -1; }
+        .vy-summary-bar { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+        .vy-pass-stub { padding: 20px 18px !important; }
+        .vy-perforation { display: none !important; }
+        .vy-picker-head { flex-wrap: wrap; gap: 10px; }
+        .vy-split { flex-wrap: wrap; row-gap: 6px !important; }
+        .vy-split > .vy-price { flex-basis: 100%; max-width: none !important; text-align: left !important; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+        .vy-split > .vy-price > * { margin-top: 0 !important; }
+        .vy-dinner-price { padding-left: 22px; }
+        .vy-tabs { width: 100%; }
+        .vy-tabs > button { flex: 1; }
+        .vy-day { gap: 10px !important; }
+        .vy-dayrow { flex-direction: column; gap: 1px !important; margin-bottom: 8px !important; }
+      }
     `}</style>
   );
 }
@@ -146,6 +170,13 @@ function formatLegTime(iso) {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if (!m) return iso;
   return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}, ${m[4]}:${m[5]}`;
+}
+
+// Local date `n` days from today as "YYYY-MM-DD" (for <input type="date"> defaults).
+function isoDateFromToday(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function stopsLabel(stops) {
@@ -194,8 +225,8 @@ function WakingServerScreen() {
 function DropdownInput({ onSubmit }) {
   const [departureCity, setDepartureCity] = useState("Delhi");
   const [destinationCity, setDestinationCity] = useState("Tokyo");
-  const [departureDate, setDepartureDate] = useState("2026-08-10");
-  const [returnDate, setReturnDate] = useState("2026-08-18");
+  const [departureDate, setDepartureDate] = useState(() => isoDateFromToday(30));
+  const [returnDate, setReturnDate] = useState(() => isoDateFromToday(37));
   const [travelers, setTravelers] = useState(1);
   const [budget, setBudget] = useState(500000);
   const [currency, setCurrency] = useState("INR");
@@ -250,6 +281,7 @@ function DropdownInput({ onSubmit }) {
 
       <form
         onSubmit={handleFormSubmit}
+        className="vy-form-card"
         style={{
           width: "100%", maxWidth: 680, background: C.paperCard, border: `1px solid ${C.line}`,
           borderRadius: 20, padding: "28px 24px", boxShadow: "0 4px 20px rgba(11,29,46,0.06)",
@@ -329,7 +361,7 @@ function DropdownInput({ onSubmit }) {
         </div>
 
         {/* Budget Input & Trip Summary Preview */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 120px", gap: 16 }}>
+        <div className="vy-budget-row" style={{ display: "grid", gridTemplateColumns: "1fr 110px 120px", gap: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>TOTAL BUDGET</label>
             <input
@@ -386,7 +418,7 @@ function DropdownInput({ onSubmit }) {
         </div>
 
         {/* Calculation Summary Bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: C.brassBg, border: `1px solid ${C.brassBorder}`, borderRadius: 12 }}>
+        <div className="vy-summary-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: C.brassBg, border: `1px solid ${C.brassBorder}`, borderRadius: 12 }}>
           <span style={{ fontSize: 13, color: C.brass, fontWeight: 600 }}>
             Duration: {days} Days / {nights} Nights
           </span>
@@ -478,7 +510,7 @@ function BoardingPass({ trip, flight, hotel }) {
   return (
     <div style={{ background: C.navy, borderRadius: 18, overflow: "hidden", display: "flex", flexWrap: "wrap", boxShadow: "0 8px 30px rgba(11,29,46,0.18)" }}>
       {/* Flight stub */}
-      <div style={{ flex: "1 1 320px", padding: "26px 28px", position: "relative" }}>
+      <div className="vy-pass-stub" style={{ flex: "1 1 320px", padding: "26px 28px", position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Plane size={16} color={C.brassLight} />
@@ -535,14 +567,14 @@ function BoardingPass({ trip, flight, hotel }) {
       </div>
 
       {/* Perforation */}
-      <div style={{ width: 0, position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "10px 0" }}>
+      <div className="vy-perforation" style={{ width: 0, position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "10px 0" }}>
         {Array.from({ length: 14 }).map((_, i) => (
           <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: C.paper, marginLeft: -4 }} />
         ))}
       </div>
 
       {/* Hotel stub */}
-      <div style={{ flex: "1 1 260px", padding: "26px 28px", background: C.navyLight }}>
+      <div className="vy-pass-stub" style={{ flex: "1 1 260px", padding: "26px 28px", background: C.navyLight }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Building2 size={16} color={C.brassLight} />
@@ -668,7 +700,7 @@ function OptionPicker({ icon, title, options, selectedId, onSelect, currency, re
 
   return (
     <SectionCard>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: expanded ? 16 : 0 }}>
+      <div className="vy-picker-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: expanded ? 16 : 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {icon}
           <span style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{title}</span>
@@ -730,7 +762,7 @@ function OptionPicker({ icon, title, options, selectedId, onSelect, currency, re
                   borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.12s",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                <div className="vy-split" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{o.label}</span>
@@ -755,7 +787,7 @@ function OptionPicker({ icon, title, options, selectedId, onSelect, currency, re
                     )}
                   </div>
 
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div className="vy-price" style={{ textAlign: "right", flexShrink: 0 }}>
                     <div className="voyage-mono" style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>
                       {formatCurrency(o.price, currency)}
                     </div>
@@ -821,7 +853,7 @@ function DayDinnerPicker({ day, currency, choice, onChoose }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <span className="voyage-mono" style={{ fontSize: 10.5, color: C.inkSoft, letterSpacing: "0.08em" }}>DINNER</span>
         {tabs.length > 0 && (
-          <div style={{ display: "flex", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 999, padding: 2 }}>
+          <div className="vy-tabs" style={{ display: "flex", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 2 }}>
             {tabs.map((t) => {
               const active = (t.key === "fine") === isFine;
               return (
@@ -830,11 +862,14 @@ function DayDinnerPicker({ day, currency, choice, onChoose }) {
                   type="button"
                   onClick={() => onChoose(t.key)}
                   style={{
-                    border: "none", cursor: "pointer", borderRadius: 999, padding: "4px 10px", fontSize: 11.5, fontWeight: 600,
-                    background: active ? C.navy : "transparent", color: active ? "#fff" : C.inkSoft,
+                    border: "none", cursor: "pointer", borderRadius: 12, padding: "4px 12px", fontSize: 11.5, fontWeight: 600, lineHeight: 1.3,
+                    background: active ? C.navy : "transparent", color: active ? "#fff" : C.inkSoft, whiteSpace: "nowrap",
                   }}
                 >
-                  {t.label} · {t.r.price_is_minimum ? "from " : ""}{formatCurrency(t.r.average_cost_per_person, currency)}
+                  <div>{t.label}</div>
+                  <div className="voyage-mono" style={{ fontSize: 10.5, fontWeight: 500, opacity: 0.85 }}>
+                    {t.r.price_is_minimum ? "from " : ""}{formatCurrency(t.r.average_cost_per_person, currency)}
+                  </div>
                 </button>
               );
             })}
@@ -842,7 +877,7 @@ function DayDinnerPicker({ day, currency, choice, onChoose }) {
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+      <div className="vy-split" style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <Utensils size={14} color={C.brass} style={{ marginTop: 2, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
@@ -872,7 +907,7 @@ function DayDinnerPicker({ day, currency, choice, onChoose }) {
           <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>{current.reason}</div>
         </div>
 
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div className="vy-price vy-dinner-price" style={{ textAlign: "right", flexShrink: 0, maxWidth: 170 }}>
           <div className="voyage-mono" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
             {current.price_is_minimum && <span style={{ fontSize: 10.5, fontWeight: 500, color: C.inkSoft }}>from </span>}
             {formatCurrency(current.average_cost_per_person, currency)}
@@ -908,11 +943,11 @@ function DayTimeline({ days, currency, dinnerChoices, onChooseDinner }) {
       <div style={{ position: "relative", paddingLeft: 6 }}>
         <div style={{ position: "absolute", left: 15, top: 8, bottom: 8, width: 0, borderLeft: `1.5px dashed ${C.line}` }} />
         {days.map((day, i) => (
-          <div key={day.day} style={{ display: "flex", gap: 18, marginBottom: i === days.length - 1 ? 0 : 26 }}>
+          <div key={day.day} className="vy-day" style={{ display: "flex", gap: 18, marginBottom: i === days.length - 1 ? 0 : 26 }}>
             <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
               <span className="voyage-mono" style={{ color: C.brassLight, fontSize: 12, fontWeight: 600 }}>{day.day}</span>
             </div>
-            <div style={{ flex: 1, paddingTop: 4 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
               {day.date && (
                 <div className="voyage-mono" style={{ fontSize: 11, color: C.brass, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 6 }}>
                   {formatLegTime(`${day.date}T00:00`).split(",")[0].toUpperCase()}
@@ -948,7 +983,7 @@ function DayTimeline({ days, currency, dinnerChoices, onChooseDinner }) {
 
 function DayRow({ label, text }) {
   return (
-    <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
+    <div className="vy-dayrow" style={{ display: "flex", gap: 10, marginBottom: 6 }}>
       <span className="voyage-mono" style={{ fontSize: 10.5, color: C.inkSoft, letterSpacing: "0.05em", width: 64, flexShrink: 0, paddingTop: 1 }}>{label.toUpperCase()}</span>
       <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{text}</span>
     </div>
@@ -1013,7 +1048,7 @@ function ConfidenceRow({ confidence }) {
 
 function SectionCard({ icon, title, children }) {
   return (
-    <div style={{ background: C.paperCard, border: `1px solid ${C.line}`, borderRadius: 16, padding: "22px 24px" }}>
+    <div className="vy-card" style={{ background: C.paperCard, border: `1px solid ${C.line}`, borderRadius: 16, padding: "22px 24px" }}>
       {title && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
           {icon}
@@ -1231,13 +1266,13 @@ function ResultsView({ data, request, context, onReset }) {
   const boardingHotel = { ...currentHotel, cost: currentHotel.price };
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 1.5rem 4rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 0" }}>
+    <div className="vy-page" style={{ maxWidth: 860, margin: "0 auto", padding: "0 1.5rem 4rem" }}>
+      <div className="vy-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Plane size={16} color={C.brass} style={{ transform: "rotate(-45deg)" }} />
           <span className="voyage-mono" style={{ fontSize: 12, letterSpacing: "0.15em", color: C.brass, fontWeight: 600 }}>VOYAGE AI</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="vy-topbar-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={downloadPdf}
             disabled={downloading}
